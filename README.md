@@ -24,4 +24,4 @@ The follwoing parts are not done yet :)
 
 Custom Error Handling: Centralized and consistent error responses for better debugging and user feedback.
 
-Document Access Security: Documents are protected and access is restricted based on user roles and permissions to ensure only authorized users can view or modify them.
+Document Access Security: Documents are protected and access is restricted based on user roles and permissions to ensure only authorized users can view or modify them...
