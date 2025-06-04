@@ -27,7 +27,6 @@ import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignReques
 @RestController
 @RequestMapping("/api/s3")
 public class S3Controller {
-
     private final S3Client s3Client;
     private final S3Presigner s3Presigner;
     private final String bucketName;
@@ -40,55 +39,39 @@ public class S3Controller {
 
     @PostMapping("/presigned-url")
     public ResponseEntity<?> generatePresignedUrl(@RequestBody PresignedUrlRequest request) {
-
         // Validate the file name
         if (request.getFileName().contains("..") || request.getFileName().contains("/")) {
             return ResponseEntity.badRequest().body("Invalid filename");
         }
-
         String folder = switch (request.getFolderType()) {
             case "blog-image" -> "blog-images/";
+            case "blog-documents" -> "blog-documents/";
             default -> "profile-images/";
         };
-
         String objectKey = folder + UUID.randomUUID() + "_" + request.getFileName();
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                 .bucket(bucketName)
                 .key(objectKey)
                 .contentType(request.getFileType())
                 .build();
-
         PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
                 .signatureDuration(Duration.ofMinutes(10))
                 .putObjectRequest(putObjectRequest)
                 .build();
-
         PresignedPutObjectRequest presignedRequest = s3Presigner.presignPutObject(presignRequest);
-
-        // return ResponseEntity.ok(Map.of("presignedUrl",
-        // presignedRequest.url().toString(), "fileUrl",
-        // "https://dwy0mahvkrvvq.cloudfront.net/" + objectKey));
-
-        // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
         String fileUrl;
         try {
-
             fileUrl = new URI("https", "dwy0mahvkrvvq.cloudfront.net", "/" + objectKey, null).toString();
-
         } catch (URISyntaxException e) {
             throw new RuntimeException("Error contructing file URL", e);
         }
-
         return ResponseEntity.ok(Map.of("presignedUrl", presignedRequest.url().toString(), "fileUrl", fileUrl));
-        // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
     }
 
     @DeleteMapping("/delete-object")
     public ResponseEntity<?> deleteObject(@RequestBody Map<String, String> request) {
         try {
-
             String imageUrl = request.get("imageUrl");
-            System.out.println("S3Controller Image Url: " + imageUrl);
             String objectKey = extractKeyFromUrl(imageUrl);
 
             s3Client.deleteObject(DeleteObjectRequest.builder()
@@ -118,16 +101,5 @@ public class S3Controller {
             throw new IllegalArgumentException("Invalid image URL format");
         }
     }
-    // private String extractKeyFromUrl(String imageUrl) {
-    // try {
-    // // Handle URL-encded chracters
-    // String decodeUrl = URLDecoder.decode(imageUrl, StandardCharsets.UTF_8);
-    // URI uri = new URI(decodeUrl);
-    // String path = uri.getPath();
-    // return path.startsWith("/") ? path.substring(1) : path;
-    // } catch (URISyntaxException e) {
-    // throw new IllegalArgumentException("Invalid image URL format");
-    // }
-    // }
 
 }

@@ -11,7 +11,7 @@ import static dev.samstevens.totp.util.Utils.getDataUriForImage;
 
 public class UserUtils {
 
-    public static Supplier<String> qrCodeSecret = () -> new DefaultSecretGenerator().generate();
+    public static Supplier<String> qrCodeSecret = () -> new DefaultSecretGenerator().generate().trim();
 
     public static BiFunction<String, String, QrData> qrDataFunction = (email, qrCodeSecret) -> new QrData.Builder()
             .issuer(NAJI)

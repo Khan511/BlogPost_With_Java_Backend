@@ -65,6 +65,9 @@ public class UserEntity {
     @Column(name = "account_non_locked")
     private boolean accountNonLocked = true;
 
+    @Column(name = "mfa_verified")
+    private boolean mfaVerified = false;
+
     @Column(name = "account_non_expired")
     private boolean accountNonExpired = true;
 

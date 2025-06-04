@@ -106,8 +106,6 @@
     <scope>runtime</scope>
 </dependency>
  
-
-
 	<dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
@@ -161,6 +159,12 @@
   			<groupId>org.apache.commons</groupId>
   			<artifactId>commons-lang3</artifactId>
   			<version>3.14.0</version> <!-- or latest available -->
+		</dependency>
+
+		<dependency>
+    	<groupId>commons-codec</groupId>
+    		<artifactId>commons-codec</artifactId>
+   			<version>1.16.0</version>
 		</dependency>
 
 	</dependencies>	 

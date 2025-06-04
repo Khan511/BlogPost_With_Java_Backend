@@ -26,6 +26,7 @@ import com.example.demo.dto.UserDto;
 import com.example.demo.entities.UserEntity;
 import com.example.demo.enumeration.TokenType;
 import com.example.demo.mapper.UserMapper;
+import com.example.demo.security.CustomUserDetails;
 import com.example.demo.security.JwtUtil;
 import com.example.demo.service.UserService;
 import static com.example.demo.utils.RequestUtils.getResponse;
@@ -83,7 +84,6 @@ public class UserController {
             HttpServletRequest request) {
 
         UserEntity getUser = userService.getUserByName(userDetails.getUsername());
-
         UserDto userDto = userService.cancelMfa(getUser.getId());
 
         return ResponseEntity.ok()

@@ -27,6 +27,8 @@ import jakarta.persistence.EntityNotFoundException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+
+// import org.apache.commons.codec.binary.Base32;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
@@ -59,7 +61,6 @@ public class UserService {
 
         publisher.publishEvent(
                 new UserEvent(userEntity, EventType.REGISTRATION, Map.of("key", confirmationEntity.getKey())));
-
     }
 
     @Transactional
@@ -84,28 +85,29 @@ public class UserService {
         user.setQrCodeSecret(codeSecret);
         user.setMfa(true);
         userRepository.save(user);
-
         return UserMapper.toUserDto(user);
     }
 
     public UserDto cancelMfa(Long id) {
-
         UserEntity user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
 
         user.setMfa(false);
+        user.setMfaVerified(false);
         user.setQrCodeSecret(EMPTY);
         user.setQrCodeImageUri(EMPTY);
         userRepository.save(user);
-
         return UserMapper.toUserDto(user);
-
     }
 
     public UserEntity verifyQrCode(String userId, String qrCode) {
         UserEntity user = userRepository.findByUserId(userId).orElseThrow(() -> new RuntimeException("User Not Found"));
-        verifyCode(qrCode, user.getQrCodeSecret());
 
-        return user;
+        verifyCode(qrCode, user.getQrCodeSecret());
+        // "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+        user.setMfaVerified(true);
+        UserEntity savedUser = userRepository.save(user);
+        // "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+        return savedUser;
     }
 
     private boolean verifyCode(String qrCode, String qrCodeSecret) {
@@ -116,7 +118,7 @@ public class UserService {
         if (codeVerifier.isValidCode(qrCodeSecret, qrCode)) {
             return true;
         } else {
-            throw new RuntimeException("Inavalid QE code. Please try again.");
+            throw new RuntimeException("Inavalid QR code. Please try again.");
         }
     }
 
@@ -185,6 +187,10 @@ public class UserService {
     public UserEntity getUserByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+    }
+
+    public UserEntity getUserById(long id) {
+        return userRepository.findById(id).orElseThrow(() -> new UsernameNotFoundException("User not found"));
     }
 
     public String deleteUser(Long userid) {

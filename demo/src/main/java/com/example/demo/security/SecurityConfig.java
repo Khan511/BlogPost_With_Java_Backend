@@ -42,6 +42,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/login").permitAll()
+                        // .requestMatchers("/api/blog/upload-documents").permitAll()
                         .requestMatchers("/api/blog/roles").hasAuthority("ROLE_ADMIN")
                         .requestMatchers("/api/blog/create").hasAuthority("ROLE_ADMIN")
                         .anyRequest().authenticated())
