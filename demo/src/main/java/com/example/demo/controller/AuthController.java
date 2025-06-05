@@ -9,7 +9,7 @@ import java.util.stream.Collectors;
 
 import com.example.demo.entities.UserEntity;
 import com.example.demo.enumeration.TokenType;
-import com.example.demo.repo.UserRepository;
+// import com.example.demo.repo.UserRepository;
 import com.example.demo.security.CustomUserDetails;
 import com.example.demo.security.JwtUtil;
 import com.example.demo.security.TokenBlacklist;
@@ -36,7 +36,7 @@ public class AuthController {
     private final JwtUtil jwtUtil;
     private final TokenBlacklist tokenBlacklist;
     private final UserService userService;
-    private final UserRepository userRepository;
+    // private final UserRepository userRepository;
 
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser(@AuthenticationPrincipal UserDetails userDetails) {
