@@ -5,6 +5,8 @@ import java.util.Map;
 import java.util.List;
 // import java.util.Collection;
 import java.util.Collections;
+
+import org.apache.tomcat.util.http.fileupload.FileUploadException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import static com.example.demo.utils.RequestUtils.getResponse;
@@ -39,7 +41,8 @@ public class DocumentController {
 
         @PostMapping("/upload-documents")
         public ResponseEntity<Response> uploadDocuments(@AuthenticationPrincipal UserDetails userDetails,
-                        @RequestBody List<DocumentDto> documents, HttpServletRequest request) {
+                        @RequestBody List<DocumentDto> documents, HttpServletRequest request)
+                        throws FileUploadException {
 
                 UserEntity user = userService.getUserByName(userDetails.getUsername());
 

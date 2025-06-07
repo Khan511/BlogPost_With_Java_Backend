@@ -4,6 +4,9 @@ import java.net.URI;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
+import javax.security.sasl.AuthenticationException;
+
 import org.hibernate.exception.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,11 +70,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return super.createResponseEntity(responseBody, headers, status, request);
     }
 
-    /**
-     * Handles validation errors thrown when input doesn't meet constraints
-     * (e.g., @NotNull, @Size).
-     * This method builds a structured response using ProblemDetail.
-     */
+    // * Handles validation errors thrown when input doesn't meet constraints
+    // * (e.g., @NotNull, @Size).
+    // * This method builds a structured response using ProblemDetail.
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
             MethodArgumentNotValidException ex,
@@ -84,7 +85,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                         f -> Optional.ofNullable(f.getDefaultMessage()).orElse("Invalid value") // Default message if
                                                                                                 // null
                 ));
-
         // Create ProblemDetail with 400 BAD_REQUEST status and a general error message
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(
                 HttpStatus.BAD_REQUEST, "Validation failed");
@@ -103,16 +103,38 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     // Custom business logic
+    // Handles exceptions of type UserNotFoundException thrown anywhere in the
+    // application
     @ExceptionHandler(UserNotFoundException.class)
     ProblemDetail handleUserNotFound(UserNotFoundException ex, WebRequest request) {
-
+        // Creates a ProblemDetail object with HTTP status 404 (Not Found)
+        // and sets the detail message from the exception
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
 
+        // Sets a human-readable title for the error response
         pd.setTitle("Resource Not Found");
-        pd.setType(URI.create(ERROR_DOCS_BASE + "not-found"));
 
+        // Sets a URI that can point to documentation or error details
+        // ERROR_DOCS_BASE is assumed to be a constant string like
+        // "https://yourdomain.com/docs/errors/"
+        pd.setType(URI.create(ERROR_DOCS_BASE + "not-found"));
+        // Returns the constructed ProblemDetail to be serialized and sent in the HTTP
+        // response
         return pd;
     }
+
+    // @ExceptionHandler(UserNotFoundException.class)
+    // ProblemDetail handleUserNotFound(UserNotFoundException ex, WebRequest
+    // request) {
+
+    // ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND,
+    // ex.getMessage());
+
+    // pd.setTitle("Resource Not Found");
+    // pd.setType(URI.create(ERROR_DOCS_BASE + "not-found"));
+
+    // return pd;
+    // }
 
     @ExceptionHandler(DuplicateUserException.class)
     ProblemDetail handleDuplicationUser(DuplicateUserException ex, WebRequest request) {
@@ -125,8 +147,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     // Security Exception
     @ExceptionHandler(JwtVerificationException.class)
-    ProblemDetail handleJwtException(JwtVerificationException ex, WebRequest request) {
-        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "Token validation failed");
+    public ProblemDetail handleJwtException(JwtVerificationException ex, WebRequest request) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
 
         pd.setTitle("Authentication Error");
         pd.setType(URI.create(ERROR_DOCS_BASE + "invalid-token"));
@@ -134,8 +156,19 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return pd;
     }
 
+    @ExceptionHandler(AuthenticationException.class)
+    ProblemDetail handleAuthenticaitonException(AuthenticationException ex) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "Authentication Failed");
+
+        pd.setTitle("Authentication Failed");
+        pd.setType(URI.create(ERROR_DOCS_BASE + "authentication-failed"));
+
+        return pd;
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
-    ProblemDetail handldAccessDenied(AccessDeniedException ex, WebRequest request) {
+    public ProblemDetail handldAccessDenied(org.springframework.security.access.AccessDeniedException ex,
+            WebRequest request) {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "insufficient-permissions");
 
         pd.setTitle("Authorization Failure");

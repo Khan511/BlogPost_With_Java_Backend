@@ -25,4 +25,5 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
     List<UserEntity> findByLastLoginBefore(LocalDateTime date);
 
+    boolean existsByEmail(String email);
 }

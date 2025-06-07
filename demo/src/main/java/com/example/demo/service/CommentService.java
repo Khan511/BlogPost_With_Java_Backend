@@ -6,6 +6,7 @@ import com.example.demo.dto.CommentResponseDto;
 import com.example.demo.entities.CommentEntity;
 import com.example.demo.entities.PostEntity;
 import com.example.demo.entities.UserEntity;
+import com.example.demo.exception.customeExceptions.UserNotFoundException;
 import com.example.demo.mapper.UserMapper;
 import com.example.demo.repo.CommentRepository;
 import com.example.demo.repo.PostRepository;
@@ -23,7 +24,7 @@ public class CommentService {
     public CommentEntity createComment(String postId, UserEntity userEntity, CommentEntity commentEntity) {
 
         PostEntity postEntity = postRepository.findByPostId(postId)
-                .orElseThrow(() -> new RuntimeException("Post not found"));
+                .orElseThrow(() -> new UserNotFoundException("Post not found"));
         commentEntity.setPostEntity(postEntity);
         commentEntity.setUserEntity(userEntity);
 
@@ -43,7 +44,7 @@ public class CommentService {
     public CommentResponseDto toggleLike(Long commentId, String userId) {
 
         CommentEntity commentEntity = commentRepository.findById(commentId)
-                .orElseThrow(() -> new RuntimeException("Comment not found"));
+                .orElseThrow(() -> new UserNotFoundException("Comment not found"));
 
         boolean isLiked = commentEntity.toggleLike(userId);
         commentRepository.save(commentEntity);

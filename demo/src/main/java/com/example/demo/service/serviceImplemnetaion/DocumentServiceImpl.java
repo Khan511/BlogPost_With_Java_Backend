@@ -14,6 +14,7 @@ import java.util.UUID;
 
 import static org.apache.commons.io.FilenameUtils.getExtension;
 import org.apache.commons.io.FileUtils;
+import org.apache.tomcat.util.http.fileupload.FileUploadException;
 import org.springframework.stereotype.Service;
 // import org.springframework.util.StringUtils;
 // import org.springframework.web.multipart.MultipartFile;
@@ -38,7 +39,7 @@ public class DocumentServiceImpl implements DocumentService {
     private final DocumentRepo documentRepo;
 
     @Override
-    public List<DocumentDto> saveDocuments(UserEntity user, List<DocumentDto> documents) {
+    public List<DocumentDto> saveDocuments(UserEntity user, List<DocumentDto> documents) throws FileUploadException {
         List<DocumentDto> newDocuments = new ArrayList<>();
         try {
             for (DocumentDto document : documents) {
@@ -63,7 +64,9 @@ public class DocumentServiceImpl implements DocumentService {
             }
             return newDocuments;
         } catch (Exception e) {
-            throw new RuntimeException("Failed to save document(s).", e);
+            throw new FileUploadException("Failed to save document(s).", e);
+            // throw new RuntimeException("Failed to save document(s).", e);
+
         }
     }
 

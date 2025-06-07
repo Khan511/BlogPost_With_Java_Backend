@@ -26,7 +26,6 @@ import com.example.demo.dto.UserDto;
 import com.example.demo.entities.UserEntity;
 import com.example.demo.enumeration.TokenType;
 import com.example.demo.mapper.UserMapper;
-import com.example.demo.security.CustomUserDetails;
 import com.example.demo.security.JwtUtil;
 import com.example.demo.service.UserService;
 import static com.example.demo.utils.RequestUtils.getResponse;
@@ -39,21 +38,12 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class UserController {
     private final UserService userService;
-    private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
 
     @PostMapping("/create")
-    // public UserDto createUser(@RequestBody UserDto userdto) {
     public ResponseEntity<?> createUser(@RequestBody UserDto userdto, HttpServletRequest request) {
 
-        UserEntity userEntity = new UserEntity();
-        userEntity.setUserId(UUID.randomUUID().toString());
-        userEntity.setUsername(userdto.getUsername());
-        userEntity.setEmail(userdto.getEmail());
-        userEntity.setPassword(passwordEncoder.encode(userdto.getPassword()));
-        userEntity.setImageUrl(userdto.getImageUrl());
-
-        userService.createUserWithRole(userEntity, userdto.getRoleNames());
+        userService.createUserWithRole(userdto, userdto.getRoleNames());
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(Map.of("message", "User Created Successfully. Please check your email for account confirmation"));
@@ -88,7 +78,6 @@ public class UserController {
 
         return ResponseEntity.ok()
                 .body(getResponse(request, Map.of("user", userDto), "MFA Canceled successfully", HttpStatus.OK));
-
     }
 
     @PostMapping("/verify/qrcode")
@@ -106,7 +95,6 @@ public class UserController {
 
     @GetMapping("/find/{userId}")
     public UserDto findUserByID(@PathVariable String userId) {
-
         return UserMapper.toUserDto(userService.getByUserId(userId));
     }
 

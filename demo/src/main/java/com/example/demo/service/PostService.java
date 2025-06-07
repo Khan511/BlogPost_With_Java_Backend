@@ -2,22 +2,20 @@ package com.example.demo.service;
 
 import com.example.demo.entities.PostEntity;
 import com.example.demo.entities.UserEntity;
+import com.example.demo.exception.customeExceptions.UserNotFoundException;
 import com.example.demo.mapper.UserMapper;
 import com.example.demo.repo.CommentRepository;
 import com.example.demo.repo.PostRepository;
 import com.example.demo.repo.UserRepository;
 import com.example.demo.security.CustomUserDetails;
-
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-
 import com.example.demo.dto.CommentResponseDto;
 import com.example.demo.dto.PostRequestDto;
 import com.example.demo.dto.PostWithCommentsDto;
@@ -50,7 +48,7 @@ public class PostService {
 
         UserEntity user = userRepository.findByUserId(userId)
 
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
 
         // Business rule: Title cannot be blank
         if (postDto.getTitle() == null || postDto.getTitle().trim().isEmpty()) {
@@ -74,10 +72,10 @@ public class PostService {
     public CommentResponseDto addCommentToPost(String postId, Long parentId, String userId, String content) {
 
         PostEntity post = postRepository.findByPostId(postId)
-                .orElseThrow(() -> new RuntimeException("Post not found"));
+                .orElseThrow(() -> new UserNotFoundException("Post not found"));
 
         UserEntity user = userRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
 
         CommentEntity comment = new CommentEntity();
         comment.setContent(content);
@@ -107,7 +105,8 @@ public class PostService {
                 .getPrincipal();
         String userId = user.getUserId();
 
-        PostEntity post = postRepository.findByPostId(postId).orElseThrow(() -> new RuntimeException("Post not found"));
+        PostEntity post = postRepository.findByPostId(postId)
+                .orElseThrow(() -> new UserNotFoundException("Post not found"));
 
         return UserMapper.toPostWithCommentsDto(post, userId);
 
@@ -122,7 +121,7 @@ public class PostService {
     // Delete a post and its comments (cascading)
     public void deletePost(String postId) {
         PostEntity post = postRepository.findByPostId(postId)
-                .orElseThrow(() -> new RuntimeException("Post not found"));
+                .orElseThrow(() -> new UserNotFoundException("Post not found"));
         postRepository.delete(post); // Orphan removal deletes comments
     }
 }

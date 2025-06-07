@@ -9,28 +9,29 @@ import com.example.demo.entities.UserEntity;
 import com.example.demo.enumeration.EventType;
 import com.example.demo.enumeration.LoginType;
 import com.example.demo.event.UserEvent;
+import com.example.demo.exception.customeExceptions.DuplicateUserException;
+import com.example.demo.exception.customeExceptions.UserNotFoundException;
 import com.example.demo.mapper.UserMapper;
 import com.example.demo.repo.ConfirmationRepo;
 import com.example.demo.repo.RoleRepository;
 import com.example.demo.repo.UserRepository;
-
 import dev.samstevens.totp.code.CodeGenerator;
 import dev.samstevens.totp.code.CodeVerifier;
 import dev.samstevens.totp.code.DefaultCodeGenerator;
 import dev.samstevens.totp.code.DefaultCodeVerifier;
 import dev.samstevens.totp.time.SystemTimeProvider;
 import dev.samstevens.totp.time.TimeProvider;
-
 import static com.example.demo.utils.UserUtils.qrCodeImageUri;
 import static com.example.demo.utils.UserUtils.qrCodeSecret;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 // import org.apache.commons.codec.binary.Base32;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
@@ -45,13 +46,25 @@ public class UserService {
     private final CacheStore<String, Integer> userCache;
     private final ConfirmationRepo confirmationRepo;
     private final ApplicationEventPublisher publisher;
-
-    // public UserEntity createUserWithRole(UserEntity userEntity, List<String>
-    // roleNames) {
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional
-    public void createUserWithRole(UserEntity userEntity, List<String> roleNames) {
+    public void createUserWithRole(UserDto userdto, List<String> roleNames) {
 
+        // Check duplication user
+        if (userRepository.existsByEmail(userdto.getEmail())) {
+            throw new DuplicateUserException("Email already registered");
+        }
+
+        // Creteuser entity
+        UserEntity userEntity = new UserEntity();
+        userEntity.setUserId(UUID.randomUUID().toString());
+        userEntity.setUsername(userdto.getUsername());
+        userEntity.setEmail(userdto.getEmail());
+        userEntity.setPassword(passwordEncoder.encode(userdto.getPassword()));
+        userEntity.setImageUrl(userdto.getImageUrl());
+
+        // Busness logic Role assignemnt
         List<RoleEntity> roles = roleRepository.findByNameIn(roleNames);
         userEntity.getRoles().addAll(roles);
         UserEntity user = userRepository.save(userEntity);
@@ -66,10 +79,10 @@ public class UserService {
     @Transactional
     public void verifyAccountKey(String key) {
         ConfirmationEntity confirmationEntity = confirmationRepo.findByKey(key)
-                .orElseThrow(() -> new RuntimeException("Confirmation Key not found"));
+                .orElseThrow(() -> new UserNotFoundException("Confirmation Key not found"));
 
         UserEntity user = userRepository.findByEmail(confirmationEntity.getUserEntity().getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
 
         user.setEnabled(true);
         userRepository.save(user);
@@ -77,7 +90,7 @@ public class UserService {
     }
 
     public UserDto setupMfa(Long id) {
-        UserEntity user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User Not Found"));
+        UserEntity user = userRepository.findById(id).orElseThrow(() -> new UserNotFoundException("User Not Found"));
 
         String codeSecret = qrCodeSecret.get();
         user.setQrCodeImageUri(qrCodeImageUri.apply(user.getEmail(), codeSecret));
@@ -100,7 +113,8 @@ public class UserService {
     }
 
     public UserEntity verifyQrCode(String userId, String qrCode) {
-        UserEntity user = userRepository.findByUserId(userId).orElseThrow(() -> new RuntimeException("User Not Found"));
+        UserEntity user = userRepository.findByUserId(userId)
+                .orElseThrow(() -> new UserNotFoundException("User Not Found"));
 
         verifyCode(qrCode, user.getQrCodeSecret());
         // "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
@@ -152,6 +166,22 @@ public class UserService {
                 }
 
             }
+            case LOGIN_FAILURE -> {
+                // If the user is not found in the cache (i.e., it's their first attempt),
+                // reset their login attempts to 0 and unlock their account.
+                if (userCache.get(userEntity.getEmail()) == null) {
+                    userEntity.setLoginAttempts(0); // Reset
+                    userEntity.setAccountNonLocked(true);
+                }
+                userEntity.setLoginAttempts(userEntity.getLoginAttempts() + 1);
+
+                userCache.put(userEntity.getEmail(), userEntity.getLoginAttempts());
+                // If the login attempts exceed 5, lock the user's account.
+                if (userCache.get(userEntity.getEmail()) > 5) {
+                    userEntity.setAccountNonLocked(false);
+                }
+
+            }
             case LOGIN_SUCCESS -> {
                 // Handle successful login case
                 // If the login is successful, ensure the account is unlocked.
@@ -173,24 +203,21 @@ public class UserService {
     }
 
     public UserEntity getByUserId(String userId) {
-
-        // return userRepository.findById(userId).orElseThrow(() -> new
-        // RuntimeException("User not found"));
-        return userRepository.findByUserId(userId).orElseThrow(() -> new RuntimeException("User not found"));
+        return userRepository.findByUserId(userId).orElseThrow(() -> new UserNotFoundException("User not found"));
     }
 
     public UserEntity getUserByName(String name) {
-        return userRepository.findByUsername(name).orElseThrow(() -> new UsernameNotFoundException("User Not Found"));
+        return userRepository.findByUsername(name).orElseThrow(() -> new UserNotFoundException("User Not Found"));
     }
 
     // UserService.java
     public UserEntity getUserByEmail(String email) {
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
     }
 
     public UserEntity getUserById(long id) {
-        return userRepository.findById(id).orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        return userRepository.findById(id).orElseThrow(() -> new UserNotFoundException("User not found"));
     }
 
     public String deleteUser(Long userid) {

@@ -6,6 +6,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import com.example.demo.exception.accessDeniedAndEntryPointExceptions.CustomAccessDeniedHandler;
+import com.example.demo.exception.accessDeniedAndEntryPointExceptions.CustomAuthenticationEntrypoint;
+
 // import com.example.demo.repo.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -30,6 +34,8 @@ public class SecurityConfig {
     private final CustomUserDetailsService customUserDetailsService;
     // private final AuthenticationConfiguration authenticationConfiguration;
     // private final UserService userService;
+    private final CustomAuthenticationEntrypoint customAuthenticationEntrypoint;
+    private final CustomAccessDeniedHandler customAccessDeniedHandler;
 
     // Security configuration
     @Bean
@@ -47,6 +53,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/blog/create").hasAuthority("ROLE_ADMIN")
                         .anyRequest().authenticated())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(exception -> exception.accessDeniedHandler(customAccessDeniedHandler)
+                        .authenticationEntryPoint(customAuthenticationEntrypoint))
 
                 .addFilterBefore(jwtAuthorizationFilter,
                         UsernamePasswordAuthenticationFilter.class)

@@ -3,16 +3,25 @@ package com.example.demo.security;
 
 import static com.example.demo.constant.Constant.LOGIN_PATH;
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.Map;
+
 // import java.util.function.Consumer;
 import static com.example.demo.utils.RequestUtils.getResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.AccountExpiredException;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.CredentialsExpiredException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
 // import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.stereotype.Component;
@@ -53,6 +62,46 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
         this.objectMapper = objectMapper;
     }
 
+    @Override
+    protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response,
+            AuthenticationException failed) throws IOException {
+
+        String email = (String) request.getAttribute("loginEmail");
+
+        // update loign attempt only if email was captured
+        if (email != null) {
+            userService.updateLoginAttempt(email, LoginType.LOGIN_FAILURE);
+        }
+
+        // Build error response
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setStatus(HttpStatus.UNAUTHORIZED.value());
+
+        Map<String, Object> errorResponse = new LinkedHashMap<>();
+        errorResponse.put("timeStapm", LocalDateTime.now().toString());
+        errorResponse.put("status", HttpStatus.UNAUTHORIZED.value());
+        errorResponse.put("error", "Authentication Failed");
+        errorResponse.put("message", getErrorResponse(failed));
+        errorResponse.put("path", request.getRequestURI());
+
+        objectMapper.writeValue(response.getWriter(), errorResponse);
+    }
+
+    private String getErrorResponse(AuthenticationException exception) {
+        if (exception instanceof BadCredentialsException) {
+            return "Invalid username or password";
+        } else if (exception instanceof DisabledException) {
+            return "Account is disabled";
+        } else if (exception instanceof LockedException) {
+            return "Account is locked";
+        } else if (exception instanceof AccountExpiredException) {
+            return "Account has expired";
+        } else if (exception instanceof CredentialsExpiredException) {
+            return "Credentials have expired";
+        }
+        return "Authenticaiton failed";
+    }
+
     // Attempts authentication by extracting credentials from request body
     // Called when a login request is received (POST to LOGIN_PATH).
     // Reads credentials from the request body and attempts authentication.
@@ -67,7 +116,14 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
             var user = new ObjectMapper().configure(Feature.AUTO_CLOSE_SOURCE, true).readValue(request.getInputStream(),
                     LoginrequestDto.class);
 
-            userService.updateLoginAttempt(user.getEmail(), LoginType.LOGIN_ATTEMPT);
+            // Store email in request for use in failure handler
+            request.setAttribute("loginEmail", user.getEmail());
+
+            try {
+                userService.updateLoginAttempt(user.getEmail(), LoginType.LOGIN_ATTEMPT);
+            } catch (Exception e) {
+                log.error("Loing attemt update failed for {}", user.getEmail(), e);
+            }
 
             // Create authentication token with email and password
             UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(user.getEmail(),
@@ -77,8 +133,8 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
             // Authenticate with Spring Security's AuthenticationManager
             return getAuthenticationManager().authenticate(authToken);
 
-        } catch (Exception e) {
-            throw new RuntimeException("Error authenticatin user" + e);
+        } catch (IOException e) {
+            throw new BadCredentialsException("Error authenticatin user" + e);
         }
     }
 
